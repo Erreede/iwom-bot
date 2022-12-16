@@ -6,10 +6,11 @@ class iWom:
     def __init__(self, username, password, initial_date):
         try:
             self.initial_date = datetime.datetime.strptime(initial_date,'%d/%m/%Y').date()
-            self.historical_date = datetime.datetime.strptime('01/01/2022','%d/%m/%Y').date()
-            self.historical_date_num = 8036
         except:
-            print('The date format is incorrect, must be: dd/mm/yyyy')
+            print('The date format is incorrect, must be: dd/mm/yyyy')    
+
+        self.historical_date = datetime.datetime.strptime('01/01/2022','%d/%m/%Y').date()
+        self.historical_date_num = 8036
         self.session = requests.Session()
         self.tld = 'https://www.bpocenter-dxc.com/'
         self.dxc_iwom_user = username
