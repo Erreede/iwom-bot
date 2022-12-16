@@ -15,7 +15,7 @@ import os
 #Ejecutar el script como está para registrar el día en curso, cambiar la linea comentada para registrar desde una fecha
 
 if __name__ == "__main__":
-    reg = iWom(os.getenv('username'), os.getenv('password'), datetime.now().strftime('%d/%m/%Y'))
+    reg = iWom(os.getenv('endpoint'), os.getenv('username'), os.getenv('password'), datetime.now().strftime('%d/%m/%Y'))
     #reg = iWom(os.getenv('username'), os.getenv('password'), '01/01/2022')
     if (datetime.now().date() - reg.initial_date).days >= 365:
         print('Can not record dates earlier to 365 days')  

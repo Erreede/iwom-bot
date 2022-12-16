@@ -5,5 +5,6 @@ services:
     container_name: iwom_bot
     build: .
     environment:
+      - endpoint=${endpoint}
       - username=${username}
       - password=${password}

@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from os.path import join
 
 class iWom:
-    def __init__(self, username, password, initial_date):
+    def __init__(self, endpoint, username, password, initial_date):
         try:
             self.initial_date = datetime.datetime.strptime(initial_date,'%d/%m/%Y').date()
         except:
@@ -12,14 +12,14 @@ class iWom:
         self.historical_date = datetime.datetime.strptime('01/01/2022','%d/%m/%Y').date()
         self.historical_date_num = 8036
         self.session = requests.Session()
-        self.tld = 'https://www.bpocenter-dxc.com/'
+        self.tld = endpoint
         self.dxc_iwom_user = username
         self.dxc_iwom_password = password
         self.tags = dict()
-        self.first_step_url = 'iwom_web5/portal_apps.aspx'
-        self.second_step_url = 'iwom_web5/Login.aspx'
-        self.third_step_url = 'iwom_web4/es-corp/app/home.aspx'
-        self.final_url = 'iwom_web4/es-corp/app/Jornada/Reg_jornada.aspx'
+        self.first_step_url = '/iwom_web5/portal_apps.aspx'
+        self.second_step_url = '/iwom_web5/Login.aspx'
+        self.third_step_url = '/iwom_web4/es-corp/app/home.aspx'
+        self.final_url = '/iwom_web4/es-corp/app/Jornada/Reg_jornada.aspx'
         self.headers = { 
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.5359.125 Safari/537.36',
         }
