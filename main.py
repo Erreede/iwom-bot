@@ -15,5 +15,5 @@ import os
 
 if __name__ == "__main__":
     reg = iWom(os.getenv('username'), os.getenv('password'), datetime.now().strftime('%d/%m/%Y'))
-    #reg = iWom('Pablo Banuelos', 'super_password', '28/10/2022')
+    #reg = iWom(os.getenv('username'), os.getenv('password'), '28/10/2022')
     reg.first_step()
