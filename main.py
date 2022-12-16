@@ -16,4 +16,8 @@ import os
 if __name__ == "__main__":
     reg = iWom(os.getenv('username'), os.getenv('password'), datetime.now().strftime('%d/%m/%Y'))
     #reg = iWom(os.getenv('username'), os.getenv('password'), '28/10/2022')
-    reg.first_step()
+    if len(reg.dates_list) > 0:
+        print('Starting the time register process')
+        reg.first_step()
+    else:
+        print('Nothing to do here')
