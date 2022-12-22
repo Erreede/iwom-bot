@@ -8,7 +8,7 @@ import os
 # 04 - Permiso retribuido -> 17
 # 05 - Excedencia -> 18
 # 06 - Permiso autorizado no retribuido -> 19
-# 07 - Descanso semanal (trunos) -> 20
+# 07 - Descanso semanal (turnos) -> 20
 # 08 - Compensación de horas -> 21
 # 09 - Huelga -> 9
 
@@ -16,7 +16,7 @@ import os
 
 if __name__ == "__main__":
     reg = iWom(os.getenv('endpoint'), os.getenv('username'), os.getenv('password'), datetime.now().strftime('%d/%m/%Y'))
-    #reg = iWom(os.getenv('endpoint'), os.getenv('username'), os.getenv('password'), '01/01/2022')
+    #reg = iWom(os.getenv('endpoint'), os.getenv('username'), os.getenv('password'), '19/12/2022')
     if (datetime.now().date() - reg.initial_date).days >= 365:
         print('Can not record dates earlier to 365 days')  
     else:  
