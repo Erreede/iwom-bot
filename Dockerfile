@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y python3.11 pyth
 ENV HOME=/home/nobody
 WORKDIR $HOME    
 
-RUN python3 -m venv $HOME/venv
+RUN python3.11 -m venv $HOME/venv
 ENV PATH="$HOME/venv/bin:$PATH"
 
 COPY requirements.txt .
