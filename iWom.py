@@ -89,7 +89,7 @@ class iWom:
     def fourth_step(self, date):
         data = {
             '__EVENTTARGET': 'ctl00$Sustituto$Calendar1',
-            '__EVENTARGUMENT': get_month_first_day(date, self.historical_date, self.historical_date_num),
+            '__EVENTARGUMENT': get_month_first_day(date, self.historical_date, self.historical_date_num),            
         }
         r = self.session.post(self.tld + self.final_url, data={**self.tags, **data}, headers=self.form_headers, allow_redirects=True)
         if r.status_code == 200:
@@ -102,11 +102,11 @@ class iWom:
             '__EVENTTARGET': 'ctl00$Sustituto$Calendar1',
             '__EVENTARGUMENT': date[2],
         }
+        if date[0] == 'Regular': data['ctl00$Sustituto$Ch_disponible'] = 'on'
         r = self.session.post(self.tld + self.final_url, data={**self.tags, **data}, headers=self.form_headers, allow_redirects=True)
         if r.status_code == 200:
             self.save_tags(r.text)
             if date[0] == 'Regular':
-                data['ctl00$Sustituto$Ch_disponible'] = 'on'
                 self.sixth_step(date)
             elif date[0] in ['Holiday', 'Other']:
                 self.absent_check(date)
@@ -175,10 +175,8 @@ def calculate_date_type(iwom, dates):
         return dates.append(['Holiday', initial_date_str, delta_days, '14'] )
     else:
         if iwom.initial_date.month in [7, 8] and iwom.initial_date.weekday() <= 4:
-            return dates.append(['Regular', initial_date_str, delta_days, '8', '15', '07:00'])
-        if initial_date_str in iwom.reduced_hours_days:
-            return dates.append(['Regular', initial_date_str, delta_days, '8', '15', '07:00'])            
-        if iwom.initial_date.weekday() == 4:
+            return dates.append(['Regular', initial_date_str, delta_days, '8', '15', '07:00'])         
+        if iwom.initial_date.weekday() == 4 or initial_date_str in iwom.reduced_hours_days:
             return dates.append(['Regular', initial_date_str, delta_days, '9', '16', '07:00'])
         elif iwom.initial_date.weekday() < 4:
             return dates.append(['Regular', initial_date_str, delta_days, '9', '18', '08:28'])    
