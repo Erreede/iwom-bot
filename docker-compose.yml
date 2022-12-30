@@ -5,6 +5,6 @@ services:
     container_name: project-bot-iwom
     build: .
     environment:
-      - endpoint=${endpoint}
+      - github_repo=${github_repo}
       - username=${username}
       - password=${password}

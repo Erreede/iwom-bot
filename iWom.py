@@ -1,4 +1,4 @@
-import requests, re, json, datetime
+import requests, re, json, datetime, os
 from bs4 import BeautifulSoup
 from os.path import join
 
@@ -9,13 +9,16 @@ class iWom:
         except:
             print('The date format is incorrect, must be: dd/mm/yyyy')    
 
-        self.historical_date = datetime.datetime.strptime('01/01/2022','%d/%m/%Y').date()
+        self.historical_date = datetime.datetime(2022, 1, 1).date()
         self.historical_date_num = 8036
         self.session = requests.Session()
-        self.tld = endpoint
         self.dxc_iwom_user = username
         self.dxc_iwom_password = password
+        self.bank_holidays = get_leaves(os.getenv('github_repo'), 'bank_holidays.json')
+        self.holidays = get_leaves(os.getenv('github_repo'), 'holidays.json')
+        self.others = get_leaves(os.getenv('github_repo'), 'others.json')
         self.tags = dict()
+        self.tld = 'https://www.bpocenter-dxc.com'
         self.first_step_url = '/iwom_web5/portal_apps.aspx'
         self.second_step_url = '/iwom_web5/Login.aspx'
         self.third_step_url = '/iwom_web4/es-corp/app/home.aspx'
@@ -27,7 +30,13 @@ class iWom:
             'Content-Type' : 'application/x-www-form-urlencoded',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.5359.125 Safari/537.36',
         }
-        self.dates_list = dates_list(self.initial_date, datetime.datetime.now().date(), self.historical_date, self.historical_date_num)
+        self.dates_list = dates_list(
+            self.initial_date,
+            self.historical_date, 
+            self.historical_date_num,
+            self.bank_holidays,
+            self.holidays,
+            self.others)
 
     def save_tags(self, text):
         self.tags = dict()
@@ -57,10 +66,6 @@ class iWom:
             if rex.lastindex == 2:
                 url = rex[1]
                 auth = re.sub("(\w+):", r'"\1":',  rex[2]. replace("'", '"'))
-                try:
-                    print('Your internal iWom username is: ' + re.search('usuario\:\'(.*?)\'', rex[2])[1])
-                except:
-                    pass
                 r = self.session.post(url, data=json.loads(auth), headers=self.form_headers, allow_redirects=True)
                 if r.status_code == 200:
                     self.third_step()
@@ -153,31 +158,26 @@ class iWom:
         else:
             print('Error saving the hours in the fifth step')     
 
-def dates_list(initial_date, now, historical_date, historical_date_num):
+def dates_list(initial_date, historical_date, historical_date_num, bank_holidays, holidays, others):
     dates = []
-    holidays = json.load(open(join('leaves', 'holidays.json')))
-    bank_holidays = json.load(open(join('leaves', 'bank_holidays.json')))
-    others = json.load(open(join('leaves', 'others.json')))
+    now = datetime.datetime.now().date()
+    initial_date_str = initial_date.strftime('%d/%m/%Y')
     while initial_date <= now:        
-        check_date_type(others, holidays, bank_holidays, initial_date, historical_date, historical_date_num, dates)
+        delta_days = str((initial_date - historical_date).days + historical_date_num)
+        for other in others:
+            if initial_date_str == other[0]:
+                return dates.append(['Other', initial_date_str, delta_days, other[1]])
+        if initial_date_str in bank_holidays:  
+            return None
+        if initial_date_str in holidays:  
+            return dates.append(['Holiday', initial_date_str, delta_days, '14'] )
+        else:      
+            if initial_date.weekday() == 4:
+                return dates.append(['Regular', initial_date_str, delta_days, '9', '16', '7:00'])
+            elif initial_date.weekday() < 5:
+                return dates.append(['Regular', initial_date_str, delta_days, '9', '18', '8:28'])
         initial_date = initial_date + datetime.timedelta(days=1)
     return dates
-
-def check_date_type(others, holidays, bank_holidays, initial_date, historical_date, historical_date_num, dates):
-    initial_date_str = initial_date.strftime('%d/%m/%Y')
-    delta_days = str((initial_date - historical_date).days + historical_date_num)
-    for other in others:
-        if initial_date_str == other[0]:
-            return dates.append(['Other', initial_date_str, delta_days, other[1]])
-    if initial_date_str in bank_holidays:  
-        return None
-    if initial_date_str in holidays:  
-        return dates.append(['Holiday', initial_date_str, delta_days, '14'] )
-    else:      
-        if initial_date.weekday() == 4:
-            return dates.append(['Regular', initial_date_str, delta_days, '9', '16', '7:00'])
-        elif initial_date.weekday() < 5:
-            return dates.append(['Regular', initial_date_str, delta_days, '9', '18', '8:28'])
 
 def calculate_month_delta(date, initial_date):
     if date > initial_date:
@@ -200,3 +200,13 @@ def move_to_month(date, fourth_step, last_date):
 def get_month_first_day(date, initial_date, initial_date_num):  
     date = datetime.datetime.strptime(date,'%d/%m/%Y').date().replace(day=1)
     return 'V' + str((date - initial_date).days + initial_date_num)
+
+def get_leaves(url, file):
+    if url is not None:
+        r = requests.get(url + '/' + file)
+        if r.status_code == 200:
+            return r.json()
+    if os.path.exists(join('leaves', file)):
+        return json.load(open(join('leaves', file)))
+    print('File ' + file + ' not found, will not register')
+    return []
