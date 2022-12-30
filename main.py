@@ -20,7 +20,7 @@ if __name__ == "__main__":
     iwom = iWom(os.getenv('username'), os.getenv('password'), datetime.now().strftime('%d/%m/%Y'))
     #iwom = iWom(os.getenv('username'), os.getenv('password'), '01/01/2022')
     if (datetime.now().date() - iwom.initial_date).days >= 365:
-        print('Can not record dates earlier to 365 days')  
+        print('Can not record dates earlier than 365 days')  
     else:  
         if len(iwom.dates_list) > 0:
             print('Starting the time register process')
