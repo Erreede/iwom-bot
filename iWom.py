@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from os.path import join
 
 class iWom:
-    def __init__(self, endpoint, username, password, initial_date):
+    def __init__(self, username, password, initial_date):
         try:
             self.initial_date = datetime.datetime.strptime(initial_date,'%d/%m/%Y').date()
         except:
