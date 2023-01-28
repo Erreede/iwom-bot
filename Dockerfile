@@ -1,6 +1,4 @@
-FROM debian:bookworm
-
-ARG DEBIAN_FRONTEND=noninteractive
+FROM ubuntu:latest
 
 RUN apt-get update && apt-get install --no-install-recommends -y python3.11 python3.11-venv python3.11-dev python3-pip python3-wheel build-essential && \
 	apt-get clean && rm -rf /var/lib/apt/lists/*

@@ -3,11 +3,15 @@ from bs4 import BeautifulSoup
 from os.path import join
 
 class iWom:
-    def __init__(self, username, password, initial_date):
+    def __init__(self, username, password, initial_date = datetime.datetime.now().strftime('%d/%m/%Y')):
         try:
             self.initial_date = datetime.datetime.strptime(initial_date,'%d/%m/%Y').date()
         except:
-            print('The date format is incorrect, must be: dd/mm/yyyy')    
+            print('The date format is incorrect, must be: dd/mm/yyyy')
+
+        if (datetime.datetime.now().date() - self.initial_date).days >= 365:
+            print('Can not record dates earlier than 365 days')  
+            return None
 
         self.historical_date = datetime.datetime(2022, 1, 1).date()
         self.historical_date_num = 8036
@@ -32,6 +36,12 @@ class iWom:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.5359.125 Safari/537.36',
         }
         self.dates_list = dates_list(self)
+
+        if len(self.dates_list) > 0:
+            print('Starting the time register process')
+            self.first_step()
+        else:
+            print('Nothing to do here')        
 
     def save_tags(self, text):
         self.tags = dict()
