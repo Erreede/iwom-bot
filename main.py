@@ -19,4 +19,4 @@ import os
 #iwom = iWom(os.getenv('username'), os.getenv('password'), '01/01/2022')
 
 if __name__ == "__main__":
-    iwom = iWom(os.getenv('username'), os.getenv('password'))
+    iwom = iWom(os.getenv('username'), os.getenv('password'), '23/02/2023')
