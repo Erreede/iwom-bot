@@ -56,9 +56,11 @@ class iWom:
     def first_step(self):
         r = self.session.get('https://portalwa1.bpocenter-dxc.com/External/Challenge?scheme=OpenIdConnect&returnUrl=%2F', allow_redirects=True)
         if r.status_code == 200:
+            print('Accessing Okta')
             okta_data = BeautifulSoup(r.text, features='html.parser').find_all('script')[2]
             stateToken = self.replace_hex_escapes(re.search('stateToken\"\:\"(.*?)\"', format(okta_data))[1])
             if r.status_code == 200:
+                print('Sending credentials to Okta')
                 r = self.session.post('https://uid.dxc.com/api/v1/authn', json={
                     "password": self.dxc_iwom_password,
                     "username": self.dxc_iwom_user,
@@ -66,7 +68,9 @@ class iWom:
                     "stateToken": stateToken
                 }, allow_redirects=True) 
                 if r.status_code == 200:
+                    print('Getting user config')
                     factor = r.json()['_embedded']['factors'][0]['id']
+                    print(r.json())
                     r = self.session.post(f'https://uid.dxc.com/api/v1/authn/factors/{factor}/verify?autoPush=true&rememberDevice=true', json={"stateToken": stateToken}, allow_redirects=True)
                     while r.json()['status'] in ['MFA_REQUIRED', 'MFA_CHALLENGE']:
                         time.sleep(10)
