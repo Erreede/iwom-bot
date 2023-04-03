@@ -57,7 +57,10 @@ class iWom:
         try:
             with open("session.pkl", mode="rb") as binary_file:
                 self.session = pickle.loads(binary_file.read())
-                self.third_step()
+            r = self.session.get('https://portalwa1.bpocenter-dxc.com/', allow_redirects=True)
+            self.save_tags(r.text)
+            r = self.session.post('https://www.bpocenter-dxc.com/iwom_web4/es-corp/app/ValidarU_IS4.aspx', data=self.tags)                
+            self.third_step()
         except:
             r = self.session.get('https://portalwa1.bpocenter-dxc.com/External/Challenge?scheme=OpenIdConnect&returnUrl=%2F', allow_redirects=True)
             if r.status_code == 200:
