@@ -1,4 +1,4 @@
-import requests, re, json, datetime, os
+import requests, re, json, datetime, os, time
 from bs4 import BeautifulSoup
 from os.path import join
 
@@ -24,8 +24,6 @@ class iWom:
         self.reduced_hours_days = get_leaves(os.getenv('github_repo'), 'reduced_hours_days.json')
         self.tags = dict()
         self.tld = 'https://www.bpocenter-dxc.com'
-        self.first_step_url = '/iwom_web5/portal_apps.aspx'
-        self.second_step_url = '/iwom_web5/Login.aspx'
         self.third_step_url = '/iwom_web4/es-corp/app/home.aspx'
         self.final_url = '/iwom_web4/es-corp/app/Jornada/Reg_jornada.aspx'
         self.headers = { 
@@ -49,37 +47,43 @@ class iWom:
         for tag in soup.find_all('input', type='hidden'):
             self.tags[tag.get('name')] = tag.get('value')         
 
-    def first_step(self):
-        r = self.session.get(self.tld + self.first_step_url, allow_redirects=True)
-        if r.status_code == 200:
-            self.save_tags(r.text)
-            self.second_step()           
-        else:
-            print('Initial request failed in first step')
+    def replace_hex_escapes(self, text):
+        pattern = re.compile(r'\\x([0-9A-Fa-f]{2})')
+        def replace_match(match):
+            return chr(int(match.group(1), 16))
+        return pattern.sub(replace_match, text)            
 
-    def second_step(self):
-        data = {
-            'LoginApps$UserName': self.dxc_iwom_user,
-            'LoginApps$Password': self.dxc_iwom_password,
-            'LoginApps$btnlogin': 'Log in'
-        }
-        r = self.session.post(self.tld + self.second_step_url, data={**self.tags, **data}, headers=self.form_headers, allow_redirects=True)
+    def first_step(self):
+        r = self.session.get('https://portalwa1.bpocenter-dxc.com/External/Challenge?scheme=OpenIdConnect&returnUrl=%2F', allow_redirects=True)
         if r.status_code == 200:
-            soup = BeautifulSoup(r.text, features='html.parser')
-            r = soup.find(id='MainContent_tableitem1').attrs['onclick']
-            rex = re.search('postwith\(\'(.*?)\'\,(.*?)\)', r)
-            if rex.lastindex == 2:
-                url = rex[1]
-                auth = re.sub("(\w+):", r'"\1":',  rex[2]. replace("'", '"'))
-                r = self.session.post(url, data=json.loads(auth), headers=self.form_headers, allow_redirects=True)
+            okta_data = BeautifulSoup(r.text, features='html.parser').find_all('script')[2]
+            stateToken = self.replace_hex_escapes(re.search('stateToken\"\:\"(.*?)\"', format(okta_data))[1])
+            if r.status_code == 200:
+                r = self.session.post('https://uid.dxc.com/api/v1/authn', json={
+                    "password": self.dxc_iwom_password,
+                    "username": self.dxc_iwom_user,
+                    "options":{"warnBeforePasswordExpired": True,"multiOptionalFactorEnroll": True},
+                    "stateToken": stateToken
+                }, allow_redirects=True) 
                 if r.status_code == 200:
-                    self.third_step()
+                    factor = r.json()['_embedded']['factors'][0]['id']
+                    r = self.session.post(f'https://uid.dxc.com/api/v1/authn/factors/{factor}/verify?autoPush=true&rememberDevice=true', json={"stateToken": stateToken}, allow_redirects=True)
+                    while r.json()['status'] in ['MFA_REQUIRED', 'MFA_CHALLENGE']:
+                        time.sleep(10)
+                        r = self.session.post(f'https://uid.dxc.com/api/v1/authn/factors/{factor}/verify?autoPush=true&rememberDevice=true', json={"stateToken": stateToken}, allow_redirects=True)
+                        
+                    if r.status_code == 200:
+                        r = self.session.get(f'https://uid.dxc.com/login/step-up/redirect?stateToken={stateToken}', allow_redirects=True)
+                        self.save_tags(r.text)
+                        r = self.session.post('https://portalwa1.bpocenter-dxc.com/signin-oidc-okta', data=self.tags)
+                        r = self.session.get('https://portalwa1.bpocenter-dxc.com/', allow_redirects=True)
+                        self.save_tags(r.text)
+                        r = self.session.post('https://www.bpocenter-dxc.com/iwom_web4/es-corp/app/ValidarU_IS4.aspx', data=self.tags)
+                        self.third_step()
                 else:
-                    print('Something went wrong in the user verification in second step')
-            else:
-                print('Regex to parse internal iWom credentials failed in second step')
+                    print('Initial request failed in first step')       
         else:
-            print('Initial post with credentials failed in second step')          
+            print('Initial request failed in first step')       
 
     def third_step(self):
         r = self.session.get(self.tld + self.third_step_url, headers=self.headers, allow_redirects=True)
@@ -140,7 +144,7 @@ class iWom:
             self.save_tags(r.text)
             print('Time recorded correctly ' + str(date))
         else:
-            print('Error saving the hours in the sixth step')              
+            print('Error saving the hours in the sixth step')                         
 
     def absent_check(self, date):
         data = {
