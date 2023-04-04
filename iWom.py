@@ -57,50 +57,44 @@ class iWom:
         try:
             with open("session.pkl", mode="rb") as binary_file:
                 self.session = pickle.loads(binary_file.read())
-            r = self.session.get('https://portalwa1.bpocenter-dxc.com/', allow_redirects=True)
-            self.save_tags(r.text)
-            r = self.session.post('https://www.bpocenter-dxc.com/iwom_web4/es-corp/app/ValidarU_IS4.aspx', data=self.tags)                
-            self.third_step()
+            self.second_step()
         except:
             r = self.session.get('https://portalwa1.bpocenter-dxc.com/External/Challenge?scheme=OpenIdConnect&returnUrl=%2F', allow_redirects=True)
             if r.status_code == 200:
-                print('Accessing Okta')
                 okta_data = BeautifulSoup(r.text, features='html.parser').find_all('script')[2]
                 stateToken = self.replace_hex_escapes(re.search('stateToken\"\:\"(.*?)\"', format(okta_data))[1])
+                r = self.session.post('https://uid.dxc.com/api/v1/authn', json={
+                    "password": self.dxc_iwom_password,
+                    "username": self.dxc_iwom_user,
+                    "options":{"warnBeforePasswordExpired": True,"multiOptionalFactorEnroll": True},
+                    "stateToken": stateToken
+                }, allow_redirects=True) 
                 if r.status_code == 200:
-                    print('Sending credentials to Okta')
-                    r = self.session.post('https://uid.dxc.com/api/v1/authn', json={
-                        "password": self.dxc_iwom_password,
-                        "username": self.dxc_iwom_user,
-                        "options":{"warnBeforePasswordExpired": True,"multiOptionalFactorEnroll": True},
-                        "stateToken": stateToken
-                    }, allow_redirects=True) 
-                    if r.status_code == 200:
-                        print('Getting user config')
-                        factor = r.json()['_embedded']['factors'][0]['id']
-                        print(r.json())
-                        r = self.session.post(f'https://uid.dxc.com/api/v1/authn/factors/{factor}/verify?autoPush=true&rememberDevice=true', json={"stateToken": stateToken}, allow_redirects=True)
-                        while r.json()['status'] in ['MFA_REQUIRED', 'MFA_CHALLENGE']:
-                            time.sleep(10)
-                            r = self.session.post(f'https://uid.dxc.com/api/v1/authn/factors/{factor}/verify?autoPush=true&rememberDevice=true', json={"stateToken": stateToken}, allow_redirects=True)
-                            
-                        if r.status_code == 200:
-                            r = self.session.get(f'https://uid.dxc.com/login/step-up/redirect?stateToken={stateToken}', allow_redirects=True)
-                            self.save_tags(r.text)
-                            r = self.session.post('https://portalwa1.bpocenter-dxc.com/signin-oidc-okta', data=self.tags)
-                            r = self.session.get('https://portalwa1.bpocenter-dxc.com/', allow_redirects=True)
-                            self.save_tags(r.text)
-                            r = self.session.post('https://www.bpocenter-dxc.com/iwom_web4/es-corp/app/ValidarU_IS4.aspx', data=self.tags)
-                            with open("session.pkl", "wb") as binary_file:                            
-                                binary_file.write(pickle.dumps(self.session))                            
-                            self.third_step()
-                    else:
-                        print('Initial request failed in first step')       
+                    factor = r.json()['_embedded']['factors'][0]['id']
+                    print(r.json())
+                    r = self.session.post(f'https://uid.dxc.com/api/v1/authn/factors/{factor}/verify?autoPush=true&rememberDevice=true', json={"stateToken": stateToken}, allow_redirects=True)
+                    while r.json()['status'] in ['MFA_REQUIRED', 'MFA_CHALLENGE']:
+                        time.sleep(10)
+                        r = self.session.post(f'https://uid.dxc.com/api/v1/authn/factors/{factor}/verify?autoPush=true&rememberDevice=true', json={"stateToken": stateToken}, allow_redirects=True)                        
+                    self.session.get(f'https://uid.dxc.com/login/step-up/redirect?stateToken={stateToken}', allow_redirects=True)
+                    self.save_tags(r.text)
+                    self.session.post('https://portalwa1.bpocenter-dxc.com/signin-oidc-okta', data=self.tags)
+                    self.second_step()
+                else:
+                    print('Error sending the credentials to Okta, maybe user/password are wrong')       
             else:
-                print('Initial request failed in first step')       
+                print('Initial request failed accessing the Okta page redirected from iWom')
+
+    def second_step(self):
+        r = self.session.get('https://portalwa1.bpocenter-dxc.com/', allow_redirects=True)
+        self.save_tags(r.text)
+        self.session.post('https://www.bpocenter-dxc.com/iwom_web4/es-corp/app/ValidarU_IS4.aspx', data=self.tags)
+        with open("session.pkl", "wb") as binary_file:
+            binary_file.write(pickle.dumps(self.session))                            
+        self.third_step() 
 
     def third_step(self):
-        r = self.session.get(self.tld + self.third_step_url, headers=self.headers, allow_redirects=True)
+        self.session.get(self.tld + self.third_step_url, headers=self.headers, allow_redirects=True)
         r = self.session.get(self.tld + self.final_url, headers=self.headers, allow_redirects=True)
         if r.status_code == 200:
             self.save_tags(r.text)
