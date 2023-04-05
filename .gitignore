@@ -2,3 +2,4 @@
 .env
 __pycache__
 session.pkl
+redirect_tags.json
