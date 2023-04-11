@@ -24,7 +24,6 @@ class iWom:
         self.reduced_hours_days = get_leaves(os.getenv('github_repo'), 'reduced_hours_days.json')
         self.tags = dict()
         self.tld = 'https://www.bpocenter-dxc.com'
-        self.third_step_url = '/iwom_web4/es-corp/app/home.aspx'
         self.final_url = '/iwom_web4/es-corp/app/Jornada/Reg_jornada.aspx'
         self.headers = { 
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.5359.125 Safari/537.36',
@@ -75,10 +74,8 @@ class iWom:
                 r = self.session.get(f'https://uid.dxc.com/login/step-up/redirect?stateToken={self.state_token}', headers=self.headers, allow_redirects=True)
                 self.save_tags(r.text)    
                 r = self.session.post('https://portalwa1.bpocenter-dxc.com/signin-oidc-okta', headers=self.headers, data=self.tags)
-                self.save_tags(r.text)   
-                r = self.session.get('https://portalwa1.bpocenter-dxc.com/', headers=self.headers, allow_redirects=True, data=self.tags)
-                self.save_tags(r.text)     
-                r = self.session.post('https://www.bpocenter-dxc.com/iwom_web4/es-corp/app/ValidarU_IS4.aspx', headers=self.headers, allow_redirects=True, data=self.tags)                          
+                self.save_tags(r.text)       
+                r = self.session.post('https://www.bpocenter-dxc.com/iwom_web4/es-corp/app/ValidarU_IS4.aspx', headers=self.headers, allow_redirects=True, data=self.tags)                         
                 self.third_step()                                                                               
             else:
                 print('Error sending the credentials to Okta, maybe user/password are wrong')       
@@ -87,10 +84,9 @@ class iWom:
                         
 
     def third_step(self):
-        r = self.session.get(self.tld + self.third_step_url, headers=self.headers, allow_redirects=True)
         r = self.session.get(self.tld + self.final_url, headers=self.headers, allow_redirects=True)
         if r.status_code == 200:
-            self.save_tags(r.text)
+            self.save_tags(r.text) 
             date_obj = datetime.datetime.strptime(self.dates_list[0][1],'%d/%m/%Y').date()
             last_date = move_to_month(date_obj, self.fourth_step, datetime.datetime.now().replace(day=1).date())
             for date in self.dates_list:
@@ -99,7 +95,7 @@ class iWom:
                     last_date = move_to_month(date_obj, self.fourth_step, last_date)
                 self.fifth_step(date)                    
         else:
-            print('Failed accessing the Reg_jornada url in third step')   
+            print('Failed accessing the final url in third step')   
 
     def fourth_step(self, date):
         data = {
