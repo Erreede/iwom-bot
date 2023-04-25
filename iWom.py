@@ -57,26 +57,42 @@ class iWom:
         r = self.session.get('https://portalwa1.bpocenter-dxc.com/External/Challenge?scheme=OpenIdConnect&returnUrl=%2F', headers=self.headers, allow_redirects=True)
         if r.status_code == 200:
             okta_data = BeautifulSoup(r.text, features='html.parser').find_all('script')[2]
-            self.state_token = self.replace_hex_escapes(re.search('stateToken\"\:\"(.*?)\"', format(okta_data))[1])             
-            r = self.session.post('https://uid.dxc.com/api/v1/authn', json={
-                "password": self.dxc_iwom_password,
-                "username": self.dxc_iwom_user,
-                "options":{"warnBeforePasswordExpired": True,"multiOptionalFactorEnroll": True},
-                "stateToken": self.state_token
-            }, headers=self.headers, allow_redirects=True) 
+            self.state_token = self.replace_hex_escapes(re.search('stateToken\"\:\"(.*?)\"', format(okta_data))[1])
+            r = self.session.post('https://uid.dxc.com/idp/idx/introspect', json={"stateToken": self.state_token})
             if r.status_code == 200:
-                factor = r.json()['_embedded']['factors'][0]['id']
-                print(r.json())
-                r = self.session.post(f'https://uid.dxc.com/api/v1/authn/factors/{factor}/verify?autoPush=true&rememberDevice=true', json={"stateToken": self.state_token}, headers=self.headers, allow_redirects=True)
-                while r.json()['status'] in ['MFA_REQUIRED', 'MFA_CHALLENGE']:
+                r = self.session.post('https://uid.dxc.com/idp/idx/identify', json={
+                        'stateHandle': r.json()['stateHandle'],
+                        'identifier': self.dxc_iwom_user,
+                        'credentials': {'passcode': self.dxc_iwom_password}
+                    }
+                )
+                r = self.session.post('https://uid.dxc.com/idp/idx/challenge', json={
+                        'authenticator': {
+                            'id': r.json()['authenticators']['value'][0]['id'],
+                            'methodType': 'push'
+                        },
+                        'stateHandle': r.json()['stateHandle'],
+                    }
+                )                       
+                r = self.session.post('https://uid.dxc.com/idp/idx/authenticators/poll', json={
+                        'stateHandle': r.json()['stateHandle'],
+                        'autoChallenge': True,
+                    }
+                )
+                while 'success' not in r.json():
                     time.sleep(10)
-                    r = self.session.post(f'https://uid.dxc.com/api/v1/authn/factors/{factor}/verify?autoPush=true&rememberDevice=true', json={"stateToken": self.state_token}, headers=self.headers, allow_redirects=True)
-                r = self.session.get(f'https://uid.dxc.com/login/step-up/redirect?stateToken={self.state_token}', headers=self.headers, allow_redirects=True)
-                self.save_tags(r.text)    
-                r = self.session.post('https://portalwa1.bpocenter-dxc.com/signin-oidc-okta', headers=self.headers, data=self.tags)
-                self.save_tags(r.text)       
-                r = self.session.post('https://www.bpocenter-dxc.com/iwom_web4/es-corp/app/ValidarU_IS4.aspx', headers=self.headers, allow_redirects=True, data=self.tags)                         
-                self.third_step()                                                                               
+                    r = self.session.post('https://uid.dxc.com/idp/idx/authenticators/poll', json={
+                            'stateHandle': r.json()['stateHandle'],
+                            'autoChallenge': True,
+                        }
+                    )     
+                r = self.session.get(f'{r.json()["success"]["href"]}')
+                if r.status_code == 200:
+                    self.save_tags(r.text)    
+                    r = self.session.post('https://portalwa1.bpocenter-dxc.com/signin-oidc-okta', headers=self.headers, data=self.tags)
+                    self.save_tags(r.text)       
+                    r = self.session.post('https://www.bpocenter-dxc.com/iwom_web4/es-corp/app/ValidarU_IS4.aspx', headers=self.headers, allow_redirects=True, data=self.tags)                         
+                    self.third_step()                                                                               
             else:
                 print('Error sending the credentials to Okta, maybe user/password are wrong')       
         else:
